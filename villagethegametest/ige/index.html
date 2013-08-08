@@ -1,0 +1,666 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<link href="css/default.css" rel="stylesheet" type="text/css" />
+	<link rel=stylesheet href="http://ajax.aspnetcdn.com/ajax/jquery.dataTables/1.9.4/css/jquery.dataTables.css" />
+
+	<!-- Isogenic Loader -->
+	<script type="text/javascript">var igeRoot = 'engine/';</script>
+	<script type="text/javascript" src="engine/loader.js"></script>
+	
+	<meta charset="utf-8" />
+	<title>IGE tool</title>
+	<link rel="stylesheet" href="http://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css" />
+	<script src="http://code.jquery.com/jquery-1.10.1.js"></script>
+	<script src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>
+	
+	<script src="http://ajax.aspnetcdn.com/ajax/jquery.dataTables/1.9.4/jquery.dataTables.min.js"></script>
+	<!--<link rel="stylesheet" href="/resources/demos/style.css" />-->
+
+	<style>
+	#feedback { font-size: 1.4em; }
+	#selectable .ui-selecting { background: #FECA40; }
+	#selectable .ui-selected { background: #F39814; color: white; }
+	#selectable { list-style-type: none; margin: 0; padding: 0; width: 60%; }
+	#selectable li { margin: 3px; padding: 0.4em; font-size: 1.4em; height: 18px; }
+	#draggable { 
+		width: 400px; height: 400px;
+		//width: 200px;
+		//display: inline-block;
+		padding: 0.5em;
+		border-width: 2px; border-radius: 5px;
+		/*position: relative; left: 900px; top: -600px;*/
+		//position: absolute; right: 100px; bottom: 100px;
+		position: absolute; 
+		left: 300px; top: 500px;
+	}
+
+	table.display tr.even.row_selected td {
+		background-color: #B0BED9;
+	}
+
+	table.display tr.odd.row_selected td {
+		background-color: #9FAFD1;
+	}	
+	
+	.greenstatus {
+		color: green;
+	}
+	.redstatus {
+		color: red;
+	}
+	.yellowstatus {
+		color: yellow;
+	}
+	.greystatus {
+		color: grey;
+	}
+	</style>
+	
+	<script>
+	var graphicspath = "http://villagethegametest.appspot.com";
+	//jsonGETfromSpreadsheat
+	var appscriptURL = "https://script.google.com/macros/s/AKfycbziu0mApUQfruK7kQWd2SCMOTgtTopynR3OnE6BQKw-qHD0nUo/exec?prefix=?";
+	var appscriptURLoptions = "https://script.google.com/macros/s/AKfycbziu0mApUQfruK7kQWd2SCMOTgtTopynR3OnE6BQKw-qHD0nUo/exec?param=options&prefix=?";
+	//var appscriptURLoptionsP = "https://script.google.com/macros/s/AKfycbziu0mApUQfruK7kQWd2SCMOTgtTopynR3OnE6BQKw-qHD0nUo/exec?param=optionsP";
+	//var delme = new IgeSpriteSheet('./assets/textures/tiles/shrubbery.png');
+	
+	
+	jQuery.noConflict();
+	jQuery(function() {
+				
+		//var aSelected = [];
+		var self = this;
+		var options = {'demo_x':300, 'demo_y':500, 'demo_height':400, 'demo_width':400, 'poll_delay':60, 'slide_delay':0.8};
+		var mytable = {};
+		
+		jQuery( "#draggable" ).draggable();
+		
+		//Load options
+		
+		//jQuery.support.cors = true;
+		jQuery.getJSON( appscriptURLoptions, function() {
+		  console.log( "success appscriptURLoptions" );
+		}).done(function ( data ) {
+			changestatus("app options data loaded", 'greenstatus');
+			//console.log("options:");
+			for (var i=1; i<data.length; i++) {
+				if (data[i][0] && data[i][1]) {
+					//console.log(data[i][0]+": "+ data[i][1]);
+					options[data[i][0]] = data[i][1];
+				}
+			}
+			//console.log(data);
+			//console.log(JSON.stringify(options));
+			
+			// start main procedure
+			// here!
+			runmain();
+			
+		}).fail(function ( jqXHR, textStatus, errorThrown ) {
+			changestatus("app options data loading error: " + errorThrown, 'redstatus');
+			//TODO: run with default options
+		});
+		//options
+		
+		function runmain(){
+		
+		//jQuery.support.cors = true;
+		jQuery.getJSON( appscriptURL, function() {
+		  console.log( "success appscriptURL" );
+		}).done(function ( data ) {
+			changestatus("spreadsheet data loaded", 'greenstatus');
+			var aDataSet = data.slice(1); //all except header
+			//console.log(aDataSet);
+			
+			if (!data[0]) {
+				changestatus("spreadsheet data loading error, please check manually appscriptURL results for clarification!", 'redstatus');
+				return -1;
+			}
+			
+			var head = [];
+			data[0].forEach(function(e){
+				head.push({'sTitle': e}); //headers
+			});
+			
+			jQuery('#dynamic').html( '<table cellpadding="0" cellspacing="0" border="0" class="display" id="bigdatatable"></table>' );
+			mytable.table = jQuery('#bigdatatable').dataTable( {
+				"aaData": aDataSet,
+				"aoColumns": head,
+				//"bDeferRender": true,
+				//"bProcessing": true,
+				"bSort": false,
+				//"sPaginationType": "full_numbers_custom", //"custom_two_button", //"full_numbers",
+				//"sScrollY": "700px",
+				"iDisplayLength": 50,
+				"aLengthMenu": [[50, 100, 200], [50, 100, 200]]
+			});
+			//
+
+			//wtf2
+			//pause maybe?
+			//var self2 = {};
+			setTimeout(function(){
+				ige.globalSmoothing(true);
+				ige.canvas(document.getElementById('maincanvas'));	
+				ige.createFrontBuffer(true);
+				ige.start(function (success) {
+					if (success) {
+						
+						self.scene1 = new IgeScene2d().id('scene1');
+
+						self.vp1 = new IgeViewport()
+							.id('vp1')
+							.autoSize(true)
+							.scene(self.scene1)
+							.drawBounds(false)
+							.mount(ige);
+					//here?
+						self.gameTexture = {};
+						self.gameTexture.background1 = new IgeTexture('assets/textures/backgrounds/grassTile.png');
+
+					}
+				});
+			},2000);//to make sure that engine is loaded - lame!
+			/*
+			ige.globalSmoothing(true);
+			ige.canvas(document.getElementById('tutorial'));	
+			ige.createFrontBuffer(true);
+			ige.start(function (success) {
+				if (success) {
+					
+					self.scene1 = new IgeScene2d().id('scene1');
+
+					self.vp1 = new IgeViewport()
+						.id('vp1')
+						.autoSize(true)
+						.scene(self.scene1)
+						.drawBounds(false)
+						.mount(ige);
+				//here?
+					self.gameTexture = {};
+					self.gameTexture.background1 = new IgeTexture('assets/textures/backgrounds/grassTile.png');
+
+				}
+			});*/
+			//wtf2
+		
+		}).fail(function ( jqXHR, textStatus, errorThrown ) {
+			changestatus("spreadsheet data loading error: " + errorThrown, 'redstatus');
+		});
+
+		var demo_width = options.demo_width, demo_height = options.demo_height, demo_x = options.demo_x, demo_y = options.demo_y;
+		
+		if ( demo_width < 100 || isNaN(demo_width) || !options.demo_width) demo_width = 400;
+		if ( demo_height < 100 || isNaN(demo_height) || !options.demo_height) demo_height = 400;
+		if ( isNaN(demo_x) || !options.demo_x) demo_x = 300;
+		if ( isNaN(demo_y) || !options.demo_y) demo_y = 500;
+		
+		var tmpcanvas = document.getElementById('maincanvas');
+		tmpcanvas.height = demo_height;
+		tmpcanvas.width = demo_width;
+		
+		document.getElementById('draggable').style.width = demo_width + 'px';
+		document.getElementById('draggable').style.height = demo_height + 'px';
+		document.getElementById('draggable').style.left = demo_x + 'px';
+		document.getElementById('draggable').style.top = demo_y + 'px';
+		//left: 300px; top: 500px;
+		
+		//not here?
+		var slide_delay = options.slide_delay;
+		if ( slide_delay < 0.1 || isNaN(slide_delay) || !options.slide_delay) slide_delay = 0.8;
+		
+		//reload
+		//var poll_delay = 60;
+		var poll_delay = options.poll_delay;//in seconds
+		if ( poll_delay < 60 || isNaN(poll_delay) || !options.poll_delay) poll_delay = 60;//don't make it faster than once in a minute
+		console.log(poll_delay*1000);
+		
+		var auto_refresh = setInterval(
+		function ()	{
+			//console.log("reload!");
+			changestatus("spreadsheet data reloaded", 'greenstatus');
+			
+			//jQuery.support.cors = true;
+			jQuery.getJSON( appscriptURL, function() {
+			  console.log( "success appscriptURL" );
+			}).done(function ( data ) {
+				
+				var aDataSet = data.slice(1); //all except header
+				//console.log(aDataSet);
+				//console.dir(mytable.table);
+				
+				//console.log("selected:" + mytable.selected);
+				
+				mytable.table.fnClearTable();
+				mytable.table.fnAddData(aDataSet);
+				
+				jQuery('#bigdatatable tbody tr:has(td:contains("'+mytable.selected+'"))').trigger('click');
+				
+			}).fail(function ( jqXHR, textStatus, errorThrown ) {
+			changestatus("data refreshing error: " + errorThrown, 'redstatus');
+		});
+			
+		}, poll_delay*1000); // refresh every N milliseconds
+		//reload
+	
+	
+	//
+		jQuery(document).on('click', '#bigdatatable tbody tr', function () {
+			
+			var nTds = jQuery('td', this);
+			//console.log(graphicspath+jQuery(nTds[1]).text());
+			//console.log(jQuery('tr', this));
+			
+			jQuery('#bigdatatable tbody tr').removeClass('row_selected');			
+			jQuery(this).toggleClass('row_selected');
+			//console.log("id: " + id + " _ index: " + index + " _ aSelected: " + aSelected);
+			mytable.selected = jQuery(nTds[8]).text();
+			
+			//HERE???
+			
+			//wtf2
+			//var self2 = this;
+			
+			var viewport = ige.$('vp1');
+			if(viewport){
+				//console.log("RELOAD!");
+				//changestatus("RELOAD", 'greenstatus');
+				
+				self.vp1.camera.panTo(new IgePoint(0, 0, 0),0);//reset
+
+				//if (ige.$('someNewId0')) ige.$('someNewId0').destroy();
+				if (ige.$('player')) ige.$('player').destroy();
+				if (ige.$('entity1')) ige.$('entity1').destroy();
+				if (ige.$('entity2')) ige.$('entity2').destroy();
+				if (ige.$('tileMap1')) ige.$('tileMap1').destroy();
+				if (ige.$('backgroundScene')) ige.$('backgroundScene').destroy();
+				for (var i=0;i<100;i++) {if (ige.$('entityS'+i)) ige.$('entityS'+i).destroy();}
+
+				//var tmptype = ui.selected.id;
+				var type = jQuery(nTds[2]).text();//tmptype.substring(8);
+				//console.log("type:" + type);
+				var url = jQuery(nTds[1]).text();
+				//console.log(url.substring(0,4));
+				if (url.substring(0,4) !== 'http')	url = graphicspath+jQuery(nTds[1]).text();
+				
+				var css_info_url = jQuery(nTds[3]).text();
+				if (css_info_url.substring(0,4) !== 'http' && css_info_url !== 'na') css_info_url = graphicspath+jQuery(nTds[3]).text();
+				
+				var init_param = {
+					"url":url,
+					"type":type,
+					"css_info":css_info_url,//jQuery(nTds[3]).text(),
+					"rows":jQuery(nTds[4]).text(),
+					"columns":jQuery(nTds[5]).text(),
+					"x_tiles":jQuery(nTds[6]).text(),
+					"y_tiles":jQuery(nTds[7]).text(),
+					"id":jQuery(nTds[8]).text()
+				};
+				
+				if (type == "single") {
+				
+					changestatus("loading single texture..." + url, 'yellowstatus');
+
+					//self.gameTexture = {};
+					//self.gameTexture.background1 = new IgeTexture('assets/textures/backgrounds/grassTile.png');
+					// Resize the background and then create a background pattern
+					self.gameTexture.background1.resize(40, 20);
+					self.backgroundScene = new IgeScene2d()
+						.id('backgroundScene')
+						.depth(0)
+						.backgroundPattern(self.gameTexture.background1, 'repeat', true, true)
+						.ignoreCamera(true) // We want the scene to remain static
+						.mount(self.scene1);
+						
+					var celltexture = new IgeCellSheet(url, 1, 1);//?
+					
+					celltexture.on('loaded', function () {
+						console.log("texturesLoaded in Single");
+						changestatus("loaded single texture", 'greenstatus');
+						
+						//if (ige.$('entity1')) ige.$('entity1').destroy();
+						var delme = new IgeEntity()
+						.id('entity1')
+						.depth(1)
+						// Set the entity texture to the cell sheet we created earlier
+						.texture(celltexture)
+						// Set the cell to 1... this is the FIRST cell in the sheet
+						.cell(1)
+						// Set the entity's width and height to match the cell we are using
+						.dimensionsFromCell()
+						.translateTo(0, 0, 0)
+						.mount(self.scene1);
+					}, false, true);
+
+				
+				} else if (type == "spritesheet") {
+					
+					changestatus("loading spritesheet... " + url, 'yellowstatus');
+					
+					//self.gameTexture = {};
+					//self.gameTexture.background1 = new IgeTexture('assets/textures/backgrounds/grassTile.png');
+					// Resize the background and then create a background pattern
+					self.gameTexture.background1.resize(40, 20);
+					self.backgroundScene = new IgeScene2d()
+						.id('backgroundScene')
+						.depth(0)
+						.backgroundPattern(self.gameTexture.background1, 'repeat', true, true)
+						.ignoreCamera(true) // We want the scene to remain static
+						.mount(self.scene1);
+				
+				
+					//console.log("css_info: "+init_param.css_info);
+					jQuery.support.cors = true;
+					if (init_param.css_info)
+					jQuery.getJSON( init_param.css_info, function() {
+					  console.log( "success init_param.css_info" );
+					}).done(function ( data ) {
+						console.log(data);
+						var j=1;
+						var cellsarr = [], cellsnamearr = [];
+						//var aDataSet = data.slice(1); //all except header
+						//console.log(aDataSet);
+						//console.dir(data);
+						if (data.frames)
+						for (var i in data.frames) {
+							//TODO: process exceptions!
+							cellsarr.push([data.frames[i].frame.x, data.frames[i].frame.y, data.frames[i].frame.w, data.frames[i].frame.h, i]);
+							cellsnamearr.push(i);
+							//console.log(i+": " + data.frames[i]);
+							/*new IgeEntity()
+							.texture(spritetexture)
+							.cell(i)
+							.id('entityS'+i)
+							.dimensionsFromCell()
+							.translateTo(0 + xAdj + xAdj2, 0, 0)
+							.mount(self.scene1);*/
+							//j++;
+						}
+						
+						//if (!jQuery(nTds[1]).text()) return -1;
+						//var bigspritetexture = new IgeSpriteSheet('assets/textures/tiles/buildings.png', cellsarr);
+						//var bigspritetexture = new IgeSpriteSheet(jQuery(nTds[1]).text(), cellsarr);
+						var bigspritetexture = new IgeSpriteSheet(url, cellsarr);
+						
+						//[//Format of the sprite area is x, y, width, height
+						//[5, 32, 22, 31, 'table'],
+						//[128, 101, 96, 52, 'panel']]
+						//console.log("cellsnamearr:" + cellsnamearr);
+						
+						bigspritetexture.on('loaded', function () {
+							
+							//console.log("slide_delay: " + slide_delay*1000);
+							//var selfX = this;
+							changestatus("loaded spritesheet texture", 'greenstatus');
+							
+							for (var k=0;k < cellsnamearr.length; k++) {
+								//selfX.k = k;
+								var tmp = new IgeEntity()
+								.id('entityS'+k)
+								.depth(k+1)
+								.opacity(1.0)
+								.texture(bigspritetexture)
+								.cellById(cellsnamearr[k])
+								.dimensionsFromCell()
+								.translateTo(0+k*3, 0+k*2, 0)
+								.hide()
+								.mount(self.scene1);
+								
+								tmp.tween()
+								.properties({
+									_opacity: 1.0
+								})
+								.duration(slide_delay*1000)
+								.startTime(ige._currentTime + k*(slide_delay*1000))
+								.easing('outCirc')
+								.beforeTween(function(arg){
+									//console.log("tmp.opacity: " + tmp.opacity());
+									//console.dir(arg);
+									//console.dir(arg._targetObj);
+									//console.log(JSON.stringify(arg._targetObj));
+									//console.log(arg);
+									
+									try {
+										var tmpid = arg._targetObj._id;
+										var tmpcell = arg._targetObj._cell;
+										if (ige.$(tmpid)) {
+											//console.log(arg._targetObj._texture._cells[tmpcell][4]);
+											changestatus("loaded spritesheet texture, cell: " + arg._targetObj._texture._cells[tmpcell][4], 'greenstatus');
+										}
+									} catch (e) {
+										//nothing;
+									}
+									//console.log("k: " + selfX.k);
+									//if (ige.$('entityS'+selfX.k)) ige.$('entityS'+selfX.k).hide();
+									arg._targetObj.show();
+									//changestatus("loaded spritesheet cellname " + , 'greenstatus');
+								})
+								.afterTween(function(arg){
+									//console.log("tmp.opacity: " + tmp.opacity());
+									//console.dir(arg);
+									//console.dir(arg._targetObj);
+									//console.log("k: " + selfX.k);
+									//if (ige.$('entityS'+selfX.k)) ige.$('entityS'+selfX.k).hide();
+									arg._targetObj.hide();
+									//changestatus("loaded spritesheet texture", 'greenstatus');
+								})
+								.start();
+								
+								//entity.opacity(0.5);
+								//tmp.opacity.tween()
+								//.stepBy({value: 0.01})
+								//.duration(1000)
+								//.start();//stop, enable, disable,
+								/*
+								tmp._translate.tween()
+								.stepBy({
+									x: 100
+								})
+								.duration(1000)
+								.start();//stop, enable, disable,
+								*/
+							}
+						});
+						
+						//mytable.table.fnClearTable();
+						//mytable.table.fnAddData(aDataSet);
+						
+						//jQuery('#bigdatatable tbody tr:has(td:contains("'+mytable.selected+'"))').trigger('click');
+						
+					}).fail(function ( jqXHR, textStatus, errorThrown ) {
+						changestatus("css_info loading error: " + errorThrown, 'redstatus');
+						console.log(JSON.stringify(jqXHR));
+						console.log(JSON.stringify(textStatus));
+						console.log(JSON.stringify(errorThrown));
+					});
+				
+				} else if (type == "walk_anim") {
+				
+					changestatus("loading walk_anim... " + url, 'yellowstatus');
+
+					//self.gameTexture = {};
+					//self.gameTexture.background1 = new IgeTexture('assets/textures/backgrounds/grassTile.png');
+					// Resize the background and then create a background pattern
+					self.gameTexture.background1.resize(40, 20);
+					self.backgroundScene = new IgeScene2d()
+						.id('backgroundScene')
+						.depth(0)
+						.backgroundPattern(self.gameTexture.background1, 'repeat', true, true)
+						.ignoreCamera(true) // We want the scene to remain static
+						.mount(self.scene1);
+						
+					// Create an isometric tile map
+					//var tileMap1 = new IgeTileMap2d()
+					self.tileMap1 = new IgeTileMap2d()
+					.id('tileMap1')
+					.isometricMounts(true)
+					.tileWidth(40)
+					.tileHeight(40)
+					//.drawGrid(10)
+					.depth(1)
+					//.drawMouse(true)
+					.drawBounds(false)
+					.drawBoundsData(false)
+					/*.occupyTile(1, 1, 1, 1, 1) // Mark tile as occupied with a value of 1 (x, y, width, height, value)
+					.occupyTile(1, 2, 1, 1, 1)
+					.occupyTile(6, 3, 1, 1, 1)*/
+					//.highlightOccupied(true) // Draws a red tile wherever a tile is "occupied"					
+					.mount(self.scene1);
+
+					console.log("texturesLoaded walk_anim");
+					//changestatus("loaded walk_anim", 'greenstatus');
+					//http://labs.villagethegame.com/walk_iso.jpg
+					
+					//TODO change to graphicspath+jQuery(nTds[1]).text() or jQuery(nTds[1]).text() ?
+					//init_param.url = "assets/textures/sprites/walk_iso.png";//"http://labs.villagethegame.com/walk_iso.jpg";
+					//init_param.url = jQuery(nTds[1]).text();//"http://labs.villagethegame.com/walk_iso.jpg";
+					
+					//
+					//self.player = new CharacterContainer()
+					//.id('player')
+					//
+					
+					//var tmpobj = new RandomMovingCharacter(init_param)
+					self.player = new CharacterContainer(init_param)
+					.id('player')
+					//.addComponent(PlayerComponent)//
+					.addComponent(IgePathComponent)//
+					.isometric(true)//?
+					//.setType(0)
+					.drawBounds(false)
+					.drawBoundsData(false)
+					.mount(self.tileMap1);
+					
+					//self.vp1.camera.trackTranslate(self.player, 100);
+					// Tell the main viewport's camera to track the
+					// second entity's movement
+					//self.vp1.camera.trackTranslate(self.player, 100);//.camera.trackRotate(self.obj[1], 0);
+					self.vp1.camera.panTo(new IgePoint(70, 80, 0),0);//({IgePoint} point, {Number} durationMs, {String} easing)//lookAt({IgeEntity} entity, {Number} durationMs, {String} easing);
+					
+		//path
+		self.pathFinder = new IgePathFinder();
+				/*var path1m = self.pathFinder.aStar(self.tileMap1, new IgePoint(0, 0, 0), new IgePoint(0, 3, 0), function (tD, tX, tY) {return tD !== 1;}, true, true);
+				var path2m = self.pathFinder.aStar(self.tileMap1, new IgePoint(0, 3, 0), new IgePoint(3, 6, 0), function (tD, tX, tY) {return tD !== 1;}, true, true);
+				var path3m = self.pathFinder.aStar(self.tileMap1, new IgePoint(3, 6, 0), new IgePoint(6, 6, 0), function (tD, tX, tY) {return tD !== 1;}, true, true);
+				var path4m = self.pathFinder.aStar(self.tileMap1, new IgePoint(6, 6, 0), new IgePoint(9, 3, 0), function (tD, tX, tY) {return tD !== 1;}, true, true);
+				var path5m = self.pathFinder.aStar(self.tileMap1, new IgePoint(9, 3, 0), new IgePoint(9, 0, 0), function (tD, tX, tY) {return tD !== 1;}, true, true);
+				var path6m = self.pathFinder.aStar(self.tileMap1, new IgePoint(9, 0, 0), new IgePoint(6, -3, 0), function (tD, tX, tY) {return tD !== 1;}, true, true);
+				var path7m = self.pathFinder.aStar(self.tileMap1, new IgePoint(6, -3, 0), new IgePoint(3, -3, 0), function (tD, tX, tY) {return tD !== 1;}, true, true);
+				var path8m = self.pathFinder.aStar(self.tileMap1, new IgePoint(3, -3, 0), new IgePoint(0, 0, 0), function (tD, tX, tY) {return tD !== 1;}, true, true);
+				*/
+				var path0m = self.pathFinder.aStar(self.tileMap1, new IgePoint(0, 0, 0), new IgePoint(0, 0, 0), function (tD, tX, tY) {return tD !== 1;}, true, true);
+				var path1m = self.pathFinder.aStar(self.tileMap1, new IgePoint(0, 0, 0), new IgePoint(0, 2, 0), function (tD, tX, tY) {return tD !== 1;}, true, true);
+				var path2m = self.pathFinder.aStar(self.tileMap1, new IgePoint(0, 2, 0), new IgePoint(2, 4, 0), function (tD, tX, tY) {return tD !== 1;}, true, true);
+				var path3m = self.pathFinder.aStar(self.tileMap1, new IgePoint(2, 4, 0), new IgePoint(4, 4, 0), function (tD, tX, tY) {return tD !== 1;}, true, true);
+				var path4m = self.pathFinder.aStar(self.tileMap1, new IgePoint(4, 4, 0), new IgePoint(6, 2, 0), function (tD, tX, tY) {return tD !== 1;}, true, true);
+				var path5m = self.pathFinder.aStar(self.tileMap1, new IgePoint(6, 2, 0), new IgePoint(6, 0, 0), function (tD, tX, tY) {return tD !== 1;}, true, true);
+				var path6m = self.pathFinder.aStar(self.tileMap1, new IgePoint(6, 0, 0), new IgePoint(4, -2, 0), function (tD, tX, tY) {return tD !== 1;}, true, true);
+				var path7m = self.pathFinder.aStar(self.tileMap1, new IgePoint(4, -2, 0), new IgePoint(2, -2, 0), function (tD, tX, tY) {return tD !== 1;}, true, true);
+				var path8m = self.pathFinder.aStar(self.tileMap1, new IgePoint(2, -2, 0), new IgePoint(0, 0, 0), function (tD, tX, tY) {return tD !== 1;}, true, true);
+				
+				//self.player.path.drawPath(true).path.add(path1m);
+				self.player
+					.path.drawPath(true) // Enable debug drawing the paths
+					.path.drawPathGlow(false) // Enable path glowing (eye candy)
+					.path.add(path0m)
+					.path.add(path1m)
+					.path.add(path2m)
+					.path.add(path3m)
+					.path.add(path4m)
+					.path.add(path5m)
+					.path.add(path6m)
+					.path.add(path7m)
+					.path.add(path8m);
+
+				// Register some event listeners for the path (these are for debug console logging so you
+				// know what events are emitted by the path component and what they mean)
+				self.player.path.on('started', function () { console.log('Pathing started...'); });//4
+				self.player.path.on('stopped', function () { console.log('Pathing stopped.'); });//2
+				self.player.path.on('cleared', function () {
+					console.log('Path data cleared.'); 
+					self.player
+					.path.add(path0m)
+					.path.add(path1m)
+					.path.add(path2m)
+					.path.add(path3m)
+					.path.add(path4m)
+					.path.add(path5m)
+					.path.add(path6m)
+					.path.add(path7m)
+					.path.add(path8m);
+					self.player.path.start();
+				});//3
+				self.player.path.on('pointComplete', function () { console.log('Path point reached...'); });
+				self.player.path.on('pathComplete', function () { console.log('Path completed...'); });//1
+				self.player.path.on('traversalComplete', function () {
+					//self.player.path.start();
+					this._entity.character.animation.stop();
+					/*self.player
+					.path.add(path1m)
+					.path.add(path2m)
+					.path.add(path3m)
+					.path.add(path4m)
+					.path.add(path5m)
+					.path.add(path6m)
+					.path.add(path7m)
+					.path.add(path8m);
+					self.player.path.start();*/
+					console.log('Traversal of all paths completed.');
+				});
+
+				self.pathFinder.on('noPathFound', function () { console.log('ERR1!'); });
+				self.pathFinder.on('exceededLimit', function () { console.log('ERR2!'); });
+				self.pathFinder.on('pathFound', function () { console.log('calculated...'); });
+
+				//self.player.path.start();
+				setTimeout(function(){self.player.path.start()},500);
+			//path
+				}
+			}
+			//HERE???
+		} );
+	//		
+		
+		}
+		
+
+
+	});
+
+	//global  :(
+	function changestatus(text, status) {
+
+		//lame
+		jQuery("#statustext").removeClass('greenstatus redstatus yellowstatus greystatus').addClass(status);
+		jQuery("#statustext").text(text);
+	}	
+  </script>
+</head>
+<body>
+
+<div id="dynamic"></div>
+
+<div id="status" style="display:block; clear:both; float:left; margin-top:15px;margin-left:5px;">
+<span id="statustext" class="greenstatus">Loading...</span>
+</div>
+
+<!--<ol id="selectable"></ol>-->
+<div id="draggable" class="ui-widget-content">
+  <canvas id="maincanvas" width="400" height="400"></canvas>
+</div>
+
+<div class="igeLoading loadingFloat">
+	<div class="loadingLogo"></div>
+	<div class="loadingCircle"></div>
+	<div class="loadingCircleInner"></div>
+	<div class="loadingText" id="loadingText">
+		Loading
+	</div>
+	<div id="loadingProgress">
+		<div id="loadingProgressBar"></div>
+	</div>
+</div>
+
+</body>
+</html>
